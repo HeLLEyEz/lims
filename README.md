@@ -23,25 +23,31 @@ A comprehensive electronic lab inventory management system built with Next.js, T
 ## 📸 Screenshots
 
 ### 🔐 Login Page
-![Login Page](https://github.com/username/lims/assets/123456789/login-page.png)
+<img width="1512" height="823" alt="login" src="https://github.com/user-attachments/assets/3f0ae981-e504-48db-8173-f346616308d8" />
+
 
 ### 📊 Dashboard 
-![Dashboard GIF](https://github.com/username/lims/assets/123456789/dashboard-overview.gif)
+[▶️ Watch the demo video](https://drive.google.com/drive/folders/1KXlvmDFyRONyvzhYtvuAt_x13hiJeJfw?usp=sharing)
+
 
 ### 📈 Overview
-![Analytics Overview](https://github.com/username/lims/assets/123456789/analytics-overview.png)
+<img width="1512" height="823" alt="overview" src="https://github.com/user-attachments/assets/8878e4ef-19a2-404c-b8ba-89f753b95804" />
+
 
 ### 🔄 Transaction Management
-![Transaction Management](https://github.com/username/lims/assets/123456789/transaction-management.png)
+<img width="1512" height="823" alt="transaction" src="https://github.com/user-attachments/assets/95dbacb2-2550-4348-8c61-8d98777f34bf" />
+
 
 ### 📋 Reports & Alerts
-![Reports GIF](https://github.com/username/lims/assets/123456789/reports-analytics.gif)
+[▶️ Watch the demo video](https://drive.google.com/drive/folders/1VvAwYqZOXIF6EXMYVUKL4S47ChoNAg0P?usp=sharing)
 
 ### 👥 User Management
-![User List](https://github.com/username/lims/assets/123456789/user-management.png)
+<img width="1512" height="823" alt="user" src="https://github.com/user-attachments/assets/71c7f281-1b1e-447b-976a-14877caa18c2" />
+<img width="1512" height="823" alt="add user" src="https://github.com/user-attachments/assets/8da1a836-a3cf-44b5-914b-b52ef04b1180" />
+
 
 ### ⚙️ System Configuration
-![System Settings](https://github.com/username/lims/assets/123456789/system-configuration.png)
+<img width="1512" height="823" alt="system" src="https://github.com/user-attachments/assets/ecbd93f8-50c9-4f4c-95c8-baf09455fa92" />
 
 ## ✨ Features
 
