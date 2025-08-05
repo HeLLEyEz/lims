@@ -5,6 +5,7 @@ A comprehensive electronic lab inventory management system built with Next.js, T
 
 ## 📋 Table of Contents
 
+- [Screenshots](#screenshots)
 - [Features](#features)
 - [Technology Stack](#technology-stack)
 - [Architecture](#architecture)
@@ -18,6 +19,29 @@ A comprehensive electronic lab inventory management system built with Next.js, T
 - [Known Limitations](#known-limitations)
 - [Future Improvements](#future-improvements)
 - [License](#license)
+
+## 📸 Screenshots
+
+### 🔐 Login Page
+![Login Page](https://github.com/username/lims/assets/123456789/login-page.png)
+
+### 📊 Dashboard 
+![Dashboard GIF](https://github.com/username/lims/assets/123456789/dashboard-overview.gif)
+
+### 📈 Overview
+![Analytics Overview](https://github.com/username/lims/assets/123456789/analytics-overview.png)
+
+### 🔄 Transaction Management
+![Transaction Management](https://github.com/username/lims/assets/123456789/transaction-management.png)
+
+### 📋 Reports & Alerts
+![Reports GIF](https://github.com/username/lims/assets/123456789/reports-analytics.gif)
+
+### 👥 User Management
+![User List](https://github.com/username/lims/assets/123456789/user-management.png)
+
+### ⚙️ System Configuration
+![System Settings](https://github.com/username/lims/assets/123456789/system-configuration.png)
 
 ## ✨ Features
 
