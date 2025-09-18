@@ -1,7 +1,8 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { AuthUser } from '@/lib/auth'
+import { auth, AuthUser } from '@/lib/auth'
+import { supabase } from '@/lib/supabase'
 
 interface AuthContextType {
   user: AuthUser | null
@@ -21,15 +22,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Check for existing session on mount
   useEffect(() => {
     checkAuth()
+    
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          const userDetails = await getUserDetails(session.user.id)
+          if (userDetails) {
+            setUser(userDetails)
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null)
+        }
+        setLoading(false)
+      }
+    )
+
+    return () => subscription.unsubscribe()
   }, [])
 
   const checkAuth = async () => {
     try {
-      // Check if user is logged in (you can store user data in localStorage or sessionStorage)
-      const storedUser = localStorage.getItem('lims_user')
-      if (storedUser) {
-        const userData = JSON.parse(storedUser)
-        setUser(userData)
+      const { user: supabaseUser, userDetails } = await auth.getCurrentUser()
+      if (userDetails) {
+        setUser(userDetails)
       }
     } catch (error) {
       console.error('Auth check error:', error)
@@ -38,29 +54,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const getUserDetails = async (userId: string): Promise<AuthUser | null> => {
+    try {
+      const response = await fetch(`/api/users/${userId}`)
+      if (!response.ok) return null
+      return await response.json()
+    } catch (error) {
+      console.error('Error fetching user details:', error)
+      return null
+    }
+  }
+
   const login = async (email: string, password: string): Promise<AuthUser> => {
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Login failed')
-      }
-
-      const data = await response.json()
-      const userData = data.user
-
-      // Store user data
-      localStorage.setItem('lims_user', JSON.stringify(userData))
-      setUser(userData)
+      const { user: supabaseUser, userDetails } = await auth.signIn({ email, password })
       
-      return userData
+      if (!userDetails) {
+        throw new Error('User details not found')
+      }
+      
+      setUser(userDetails)
+      return userDetails
     } catch (error) {
       console.error('Login error:', error)
       throw error
@@ -69,8 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      // Clear stored user data
-      localStorage.removeItem('lims_user')
+      await auth.signOut()
       setUser(null)
     } catch (error) {
       console.error('Logout error:', error)
@@ -78,12 +91,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const clearSession = () => {
-    localStorage.removeItem('lims_user')
     setUser(null)
   }
 
   const updateUser = (userData: AuthUser) => {
-    localStorage.setItem('lims_user', JSON.stringify(userData))
     setUser(userData)
   }
 

@@ -78,7 +78,18 @@ export function LowStockAlerts() {
     )
   }
 
+  // Combine arrays and ensure no duplicates
   const allCriticalComponents = [...data.outOfStock, ...data.lowStock]
+  
+  // Debug: Log the data to see if there are any duplicates
+  console.log('Out of Stock:', data.outOfStock.map(c => ({ id: c.id, name: c.name, quantity: c.quantity })))
+  console.log('Low Stock:', data.lowStock.map(c => ({ id: c.id, name: c.name, quantity: c.quantity })))
+  console.log('Combined:', allCriticalComponents.map(c => ({ id: c.id, name: c.name, quantity: c.quantity })))
+  
+  // Remove any duplicates that might still exist
+  const uniqueCriticalComponents = allCriticalComponents.filter((component, index, array) => 
+    array.findIndex(c => c.id === component.id) === index
+  )
 
   return (
     <div className="space-y-6">
@@ -136,7 +147,7 @@ export function LowStockAlerts() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {allCriticalComponents.length === 0 ? (
+          {uniqueCriticalComponents.length === 0 ? (
             <div className="text-center py-8">
               <Package className="h-12 w-12 text-green-500 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">All Good!</h3>
@@ -155,12 +166,12 @@ export function LowStockAlerts() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {allCriticalComponents.map((component) => {
+                {uniqueCriticalComponents.map((component, index) => {
                   const stockStatus = getStockStatus(component.quantity, component.criticalLowThreshold)
                   const StatusIcon = stockStatus.icon
                   
                   return (
-                    <TableRow key={component.id} className={component.quantity === 0 ? 'bg-red-50' : 'bg-orange-50'}>
+                    <TableRow key={`${component.id}-${component.quantity}-${index}`} className={component.quantity === 0 ? 'bg-red-50' : 'bg-orange-50'}>
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <Package className="h-4 w-4" />

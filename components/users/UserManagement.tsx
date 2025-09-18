@@ -324,7 +324,11 @@ export function UserManagement() {
                   </TableCell>
                   <TableCell>
                     {user.lastLoginAt 
-                      ? new Date(user.lastLoginAt).toLocaleDateString()
+                      ? new Date(user.lastLoginAt).toLocaleDateString('en-GB', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric'
+                        })
                       : 'Never'
                     }
                   </TableCell>

@@ -1,61 +1,85 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+// Generate a CUID-like ID
+function generateId(): string {
+  const timestamp = Date.now().toString(36)
+  const random = Math.random().toString(36).substring(2, 15)
+  return `cm${timestamp}${random}`
+}
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
     const search = searchParams.get('search')
+    const minQuantity = searchParams.get('minQuantity')
+    const maxQuantity = searchParams.get('maxQuantity')
+    const location = searchParams.get('location')
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
     const skip = (page - 1) * limit
 
-    // Build where clause
-    const where: any = {}
-    
+    // Build Supabase query
+    let query = supabase
+      .from('components')
+      .select(`
+        *,
+        category:categories(*),
+        creator:users(id, firstName, lastName, email)
+      `)
+      .order('createdAt', { ascending: false })
+
+    // Apply filters
     if (category && category !== 'all') {
-      where.categoryId = category
+      query = query.eq('categoryId', category)
     }
     
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { partNumber: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { manufacturer: { contains: search, mode: 'insensitive' } }
-      ]
+      query = query.or(`name.ilike.%${search}%,partNumber.ilike.%${search}%,description.ilike.%${search}%,manufacturer.ilike.%${search}%,supplier.ilike.%${search}%`)
     }
 
-    const [components, total] = await Promise.all([
-      prisma.component.findMany({
-        where,
-        include: {
-          category: true,
-          creator: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true
-            }
-          }
-        },
-        orderBy: {
-          createdAt: 'desc'
-        },
-        skip,
-        take: limit
-      }),
-      prisma.component.count({ where })
-    ])
+    if (minQuantity) {
+      query = query.gte('quantity', parseInt(minQuantity))
+    }
+    
+    if (maxQuantity) {
+      query = query.lte('quantity', parseInt(maxQuantity))
+    }
+
+    if (location) {
+      query = query.ilike('locationBin', `%${location}%`)
+    }
+
+    // Get total count for pagination
+    const { count } = await supabase
+      .from('components')
+      .select('*', { count: 'exact', head: true })
+
+    // Apply pagination
+    query = query.range(skip, skip + limit - 1)
+
+    const { data: components, error } = await query
+
+    if (error) {
+      console.error('Supabase error:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch components' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({
-      components,
+      components: components || [],
       pagination: {
         page,
         limit,
-        total,
-        pages: Math.ceil(total / limit)
+        total: count || 0,
+        pages: Math.ceil((count || 0) / limit)
       }
     })
   } catch (error) {
@@ -81,7 +105,8 @@ export async function POST(request: NextRequest) {
       unitPrice,
       datasheetLink,
       criticalLowThreshold,
-      categoryId
+      categoryId,
+      createdBy
     } = body
 
     // Validate required fields
@@ -92,10 +117,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check if category exists
+    const { data: categoryExists, error: categoryError } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('id', categoryId)
+      .single()
+
+    if (categoryError || !categoryExists) {
+      console.error(`Category validation failed for ID: ${categoryId}`)
+      return NextResponse.json(
+        { error: `Selected category does not exist (ID: ${categoryId})` },
+        { status: 400 }
+      )
+    }
+
     // Check if part number already exists
-    const existingComponent = await prisma.component.findUnique({
-      where: { partNumber }
-    })
+    const { data: existingComponent } = await supabase
+      .from('components')
+      .select('id')
+      .eq('partNumber', partNumber)
+      .single()
 
     if (existingComponent) {
       return NextResponse.json(
@@ -104,9 +146,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create component
-    const component = await prisma.component.create({
-      data: {
+    // Get a default user ID if none provided (for now, use the first admin user)
+    let userId = createdBy
+    if (!userId) {
+      const { data: defaultUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('role', 'ADMIN')
+        .limit(1)
+        .single()
+      userId = defaultUser?.id || '84d5071d-6e38-4350-8974-f7474071fd2a' // Use admin ID as fallback
+    }
+
+    // Create component with generated ID
+    const componentId = generateId()
+    const { data: component, error } = await supabase
+      .from('components')
+      .insert({
+        id: componentId,
         name,
         manufacturer,
         supplier,
@@ -118,22 +175,39 @@ export async function POST(request: NextRequest) {
         datasheetLink,
         criticalLowThreshold: criticalLowThreshold || 10,
         categoryId,
-        createdBy: 'temp-user-id' // TODO: Get from auth session
-      },
-      include: {
-        category: true,
-        creator: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true
-          }
-        }
-      }
-    })
+        createdBy: userId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      })
+      .select('*')
+      .single()
 
-    return NextResponse.json(component, { status: 201 })
+    if (error) {
+      console.error('Supabase error:', error)
+      return NextResponse.json(
+        { error: `Failed to create component: ${error.message}` },
+        { status: 500 }
+      )
+    }
+
+    // Get the created component with related data
+    const { data: componentWithRelations, error: relationError } = await supabase
+      .from('components')
+      .select(`
+        *,
+        category:categories(*),
+        creator:users(id, firstName, lastName, email)
+      `)
+      .eq('id', component.id)
+      .single()
+
+    if (relationError) {
+      console.error('Supabase relation error:', relationError)
+      // Return the component without relations if that fails
+      return NextResponse.json(component, { status: 201 })
+    }
+
+    return NextResponse.json(componentWithRelations, { status: 201 })
   } catch (error) {
     console.error('Error creating component:', error)
     return NextResponse.json(

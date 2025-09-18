@@ -204,22 +204,6 @@ export function OldStockReport() {
         </CardContent>
       </Card>
 
-      {/* Recommendations */}
-      {data.oldStock.length > 0 && (
-        <Card className="border-yellow-200 bg-yellow-50">
-          <CardHeader>
-            <CardTitle className="text-yellow-800">Recommendations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-sm text-yellow-800">
-              <p>• Consider reviewing these components for potential disposal or repurposing</p>
-              <p>• Evaluate if these items are still needed for future projects</p>
-              <p>• Check if components are still functional and within specifications</p>
-              <p>• Consider donating usable components to educational institutions</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   )
 } 

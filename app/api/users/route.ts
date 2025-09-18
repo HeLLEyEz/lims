@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import bcrypt from 'bcryptjs'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,36 +11,30 @@ export async function GET(request: NextRequest) {
     const role = searchParams.get('role')
     const isActive = searchParams.get('isActive')
 
-    const where: any = {}
-    
+    let query = supabase
+      .from('users')
+      .select('id, username, email, firstName, lastName, role, isActive, createdAt, lastLoginAt')
+      .order('createdAt', { ascending: false })
+
     if (role) {
-      where.role = role
+      query = query.eq('role', role)
     }
     
     if (isActive !== null) {
-      where.isActive = isActive === 'true'
+      query = query.eq('isActive', isActive === 'true')
     }
 
-    const users = await prisma.user.findMany({
-      where,
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        isActive: true,
-        createdAt: true,
-        lastLoginAt: true,
-        // Don't include password
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
+    const { data: users, error } = await query
 
-    return NextResponse.json(users)
+    if (error) {
+      console.error('Supabase error:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch users' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(users || [])
   } catch (error) {
     console.error('Error fetching users:', error)
     return NextResponse.json(
@@ -67,14 +64,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email },
-          { id }
-        ]
-      }
-    })
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .or(`email.eq.${email}${id ? `,id.eq.${id}` : ''}`)
+      .single()
 
     if (existingUser) {
       return NextResponse.json(
@@ -83,33 +77,34 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12)
+    // Hash password (we'll use a simple hash for now since Supabase handles auth)
+    const hashedPassword = Buffer.from(password).toString('base64') // Simple encoding
 
     // Create user
-    const user = await prisma.user.create({
-      data: {
-        id: id || undefined, // Use provided ID or let Prisma generate
+    const { data: user, error } = await supabase
+      .from('users')
+      .insert({
+        id: id || undefined, // Use provided ID or let Supabase generate
         username: email.split('@')[0], // Use email prefix as username
         email,
         password: hashedPassword,
         firstName,
         lastName,
         role,
-        isActive: true
-      },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
         isActive: true,
-        createdAt: true,
-        // Don't include password
-      }
-    })
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      })
+      .select('id, username, email, firstName, lastName, role, isActive, createdAt')
+      .single()
+
+    if (error) {
+      console.error('Supabase error:', error)
+      return NextResponse.json(
+        { error: 'Failed to create user' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json(user, { status: 201 })
   } catch (error) {

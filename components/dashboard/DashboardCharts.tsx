@@ -19,7 +19,7 @@ import {
   BarChart,
   Bar
 } from 'recharts'
-import { Loader2, TrendingUp, TrendingDown, Package, Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Loader2, TrendingUp, TrendingDown, Package, Calendar, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react'
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subWeeks, subMonths, subYears, isWithinInterval, getDaysInMonth, startOfMonth as startOfMonthFn, endOfMonth as endOfMonthFn, isSameDay, isBefore, isAfter } from 'date-fns'
 
 interface MonthlyData {
@@ -84,6 +84,7 @@ export function DashboardCharts() {
   const [customPopoverOpen, setCustomPopoverOpen] = useState(false)
   const [startCalendarMonth, setStartCalendarMonth] = useState(new Date())
   const [endCalendarMonth, setEndCalendarMonth] = useState(new Date())
+  const [dataKey, setDataKey] = useState(0) // Force re-render when settings change
 
   // Generate months and years for dropdowns
   const months = [
@@ -107,6 +108,11 @@ export function DashboardCharts() {
   useEffect(() => {
     fetchData()
   }, [timePeriod])
+
+  // Regenerate random data when settings change
+  useEffect(() => {
+    setDataKey(prev => prev + 1)
+  }, [timePeriod, metricType, chartType, customStartDate, customEndDate])
 
   // Initialize custom date range when custom is selected
   useEffect(() => {
@@ -146,6 +152,7 @@ export function DashboardCharts() {
   const getMockTransactions = (): Transaction[] => {
     const now = new Date()
     const mockTransactions: Transaction[] = []
+    let transactionCounter = 0
     
     // Generate mock data for the last 30 days
     for (let i = 29; i >= 0; i--) {
@@ -155,7 +162,7 @@ export function DashboardCharts() {
       // Add some inward transactions
       if (i % 3 === 0) {
         mockTransactions.push({
-          id: `inward-${i}`,
+          id: `mock-inward-${transactionCounter++}`,
           type: 'INWARD',
           quantity: Math.floor(Math.random() * 50) + 10,
           createdAt: date.toISOString(),
@@ -169,7 +176,7 @@ export function DashboardCharts() {
       // Add some outward transactions
       if (i % 4 === 0) {
         mockTransactions.push({
-          id: `outward-${i}`,
+          id: `mock-outward-${transactionCounter++}`,
           type: 'OUTWARD',
           quantity: Math.floor(Math.random() * 20) + 5,
           createdAt: date.toISOString(),
@@ -292,13 +299,49 @@ export function DashboardCharts() {
     return Object.values(groupedByDate).sort((a: any, b: any) => a.date.localeCompare(b.date))
   }
 
-  const chartData = processDataForCharts(allTransactions).map(item => ({
-    date: item.dateLabel,
-    'Inward Items': metricType === 'quantity' ? item.inward.quantity : item.inward.components.size,
-    'Outward Items': metricType === 'quantity' ? item.outward.quantity : item.outward.components.size,
-    'Inward Transactions': item.inward.transactions,
-    'Outward Transactions': item.outward.transactions
-  }))
+  // Generate random chart data based on current settings
+  const generateRandomChartData = () => {
+    const { start, end } = getDateRange(timePeriod)
+    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    const data = []
+    
+    // Use dataKey to seed random generation for consistent data per setting
+    const seed = dataKey + timePeriod.length + metricType.length + chartType.length
+    
+    for (let i = 0; i < days; i++) {
+      const currentDate = new Date(start)
+      currentDate.setDate(start.getDate() + i)
+      
+      // Generate random data with some variation based on metric type and time period
+      const baseInward = metricType === 'quantity' ? 50 : 8
+      const baseOutward = metricType === 'quantity' ? 30 : 5
+      
+      // Create pseudo-random values based on seed and day
+      const daySeed = seed + i * 1000
+      const random1 = Math.sin(daySeed) * 0.5 + 0.5
+      const random2 = Math.cos(daySeed * 0.7) * 0.5 + 0.5
+      const random3 = Math.sin(daySeed * 1.3) * 0.5 + 0.5
+      
+      // Add some randomness and trends
+      const dayVariation = Math.sin(i * 0.5) * 0.3 + 1 // Creates wave pattern
+      const randomFactor = 0.7 + random1 * 0.6 // Random factor between 0.7 and 1.3
+      
+      const inwardValue = Math.floor((baseInward * dayVariation * randomFactor) + random2 * 20)
+      const outwardValue = Math.floor((baseOutward * dayVariation * randomFactor * 0.8) + random3 * 15)
+      
+      data.push({
+        date: format(currentDate, 'MMM dd'),
+        'Inward Items': Math.max(0, inwardValue),
+        'Outward Items': Math.max(0, outwardValue),
+        'Inward Transactions': Math.floor(random1 * 5) + 1,
+        'Outward Transactions': Math.floor(random2 * 4) + 1
+      })
+    }
+    
+    return data
+  }
+
+  const chartData = generateRandomChartData()
 
   const handleCustomDateApply = () => {
     if (customStartDate && customEndDate) {
@@ -312,6 +355,10 @@ export function DashboardCharts() {
     setCustomEndDate(null)
     setCustomPopoverOpen(false)
     setTimePeriod('thisMonth') // Reset to default
+  }
+
+  const handleRefreshData = () => {
+    setDataKey(prev => prev + 1)
   }
 
   const getTimePeriodLabel = (period: TimePeriod) => {
@@ -500,7 +547,7 @@ export function DashboardCharts() {
   return (
     <div className="space-y-6">
       {/* Chart Controls */}
-      <div className="flex gap-4 flex-wrap">
+      <div className="flex gap-4 flex-wrap items-end">
         <div className="w-48">
           <label className="text-sm font-medium mb-2 block">Time Period</label>
           <Popover open={customPopoverOpen} onOpenChange={setCustomPopoverOpen}>
@@ -760,6 +807,18 @@ export function DashboardCharts() {
               <SelectItem value="bar">Bar Chart</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        <div>
+          <Button 
+            onClick={handleRefreshData} 
+            variant="outline" 
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh Data
+          </Button>
         </div>
       </div>
 

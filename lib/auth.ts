@@ -39,9 +39,11 @@ export const auth = {
     
     if (error) throw error
     
-    // Get user details from our database
+    // Get user details from our database and update last login
     if (data.user) {
       const userDetails = await getUserDetails(data.user.id)
+      // Update last login timestamp
+      await updateLastLogin(data.user.id)
       return { user: data.user, userDetails }
     }
     
@@ -85,6 +87,8 @@ export const auth = {
     
     if (user) {
       const userDetails = await getUserDetails(user.id)
+      // Update last login timestamp
+      await updateLastLogin(user.id)
       return { user, userDetails }
     }
     
@@ -108,11 +112,64 @@ export const auth = {
 async function getUserDetails(userId: string): Promise<AuthUser | null> {
   try {
     const response = await fetch(`/api/users/${userId}`)
-    if (!response.ok) return null
-    return await response.json()
+    if (response.ok) {
+      return await response.json()
+    }
+    
+    // If user not found in database, try to create them
+    if (response.status === 404) {
+      console.log('User not found in database, attempting to create...')
+      
+      // Get user info from Supabase Auth
+      const { data: { user: supabaseUser }, error } = await supabase.auth.getUser()
+      if (error || !supabaseUser) {
+        console.error('Error getting Supabase user:', error)
+        return null
+      }
+      
+      // Create user in database (without password since they're authenticated via Supabase)
+      const createResponse = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: supabaseUser.id,
+          email: supabaseUser.email,
+          username: supabaseUser.email?.split('@')[0] || 'user',
+          firstName: supabaseUser.user_metadata?.firstName || '',
+          lastName: supabaseUser.user_metadata?.lastName || '',
+          role: 'USER', // Default role
+          password: 'temp-password' // Temporary password since they're authenticated via Supabase
+        }),
+      })
+      
+      if (createResponse.ok) {
+        return await createResponse.json()
+      } else {
+        console.error('Failed to create user in database')
+        return null
+      }
+    }
+    
+    return null
   } catch (error) {
     console.error('Error fetching user details:', error)
     return null
+  }
+}
+
+async function updateLastLogin(userId: string): Promise<void> {
+  try {
+    await fetch(`/api/users/${userId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ updateLastLogin: true }),
+    })
+  } catch (error) {
+    console.error('Error updating last login:', error)
   }
 }
 

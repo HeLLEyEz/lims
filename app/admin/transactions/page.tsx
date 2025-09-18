@@ -5,12 +5,12 @@ import {
   Package,
   LogOut,
   User,
+  Users,
   BarChart3,
   LayoutDashboard,
   FileText,
   Settings,
   Shield,
-  ArrowLeft
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -57,19 +57,13 @@ export default function AdminTransactionsPage() {
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-2">
-            <Link href="/admin">
+            <Link href="/admin/dashboard">
               <Button variant="ghost" className="w-full justify-start">
                 <LayoutDashboard className="mr-3 h-4 w-4" />
                 Dashboard
               </Button>
             </Link>
             
-            <Link href="/admin/overview">
-              <Button variant="ghost" className="w-full justify-start">
-                <BarChart3 className="mr-3 h-4 w-4" />
-                Overview
-              </Button>
-            </Link>
             
             <Link href="/admin/components">
               <Button variant="ghost" className="w-full justify-start">
@@ -92,17 +86,11 @@ export default function AdminTransactionsPage() {
             
             <Link href="/admin/users">
               <Button variant="ghost" className="w-full justify-start">
-                <User className="mr-3 h-4 w-4" />
+                <Users className="mr-3 h-4 w-4" />
                 Users
               </Button>
             </Link>
             
-            <Link href="/admin/system">
-              <Button variant="ghost" className="w-full justify-start">
-                <Settings className="mr-3 h-4 w-4" />
-                System
-              </Button>
-            </Link>
           </nav>
 
           {/* User Profile */}
@@ -161,12 +149,6 @@ export default function AdminTransactionsPage() {
             <div className="flex justify-between items-center">
               <div>
                 <div className="flex items-center gap-4">
-                  <Link href="/admin">
-                    <Button variant="ghost" size="sm" className="flex items-center gap-2">
-                      <ArrowLeft className="h-4 w-4" />
-                      Back to Dashboard
-                    </Button>
-                  </Link>
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 mt-2">Transaction Management</h2>
                 <p className="text-gray-600">Complete transaction tracking and management</p>

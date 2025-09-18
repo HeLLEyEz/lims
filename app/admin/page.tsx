@@ -5,6 +5,7 @@ import {
   Package, 
   LogOut,
   User,
+  Users,
   BarChart3,
   LayoutDashboard,
   FileText,
@@ -67,12 +68,6 @@ export default function AdminDashboardPage() {
               </Button>
             </Link>
             
-            <Link href="/admin/overview">
-              <Button variant="ghost" className="w-full justify-start">
-                <BarChart3 className="mr-3 h-4 w-4" />
-                Overview
-              </Button>
-            </Link>
             
             <Link href="/admin/components">
               <Button variant="ghost" className="w-full justify-start">
@@ -97,17 +92,11 @@ export default function AdminDashboardPage() {
             
             <Link href="/admin/users">
               <Button variant="ghost" className="w-full justify-start">
-                <User className="mr-3 h-4 w-4" />
+                <Users className="mr-3 h-4 w-4" />
                 Users
               </Button>
             </Link>
             
-            <Link href="/admin/system">
-              <Button variant="ghost" className="w-full justify-start">
-                <Settings className="mr-3 h-4 w-4" />
-                System
-              </Button>
-            </Link>
           </nav>
 
           {/* User Profile */}

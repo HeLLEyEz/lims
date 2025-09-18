@@ -1,54 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@supabase/supabase-js'
 import { subMonths } from 'date-fns'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 export async function GET() {
   try {
     const threeMonthsAgo = subMonths(new Date(), 3)
 
     // Get components that haven't been used (outwarded) in 3 months
-    const oldStockComponents = await prisma.component.findMany({
-      where: {
-        OR: [
-          {
-            lastOutwardDate: {
-              lt: threeMonthsAgo
-            }
-          },
-          {
-            lastOutwardDate: null
-          }
-        ],
-        quantity: {
-          gt: 0 // Only components with stock
-        }
-      },
-      include: {
-        category: {
-          select: {
-            name: true
-          }
-        }
-      },
-      orderBy: [
-        {
-          lastOutwardDate: 'asc'
-        },
-        {
-          quantity: 'desc'
-        }
-      ]
-    })
+    const { data: oldStockComponents, error } = await supabase
+      .from('components')
+      .select(`
+        *,
+        category:categories(name)
+      `)
+      .or(`lastOutwardDate.lt.${threeMonthsAgo.toISOString()},lastOutwardDate.is.null`)
+      .gt('quantity', 0) // Only components with stock
+      .order('lastOutwardDate', { ascending: true, nullsFirst: true })
+      .order('quantity', { ascending: false })
+
+    if (error) {
+      console.error('Supabase error:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch old stock components' },
+        { status: 500 }
+      )
+    }
 
     // Calculate total value of old stock
-    const totalOldStockValue = oldStockComponents.reduce((sum, component) => {
+    const totalOldStockValue = (oldStockComponents || []).reduce((sum, component) => {
       return sum + (parseFloat(component.unitPrice.toString()) * component.quantity)
     }, 0)
 
     return NextResponse.json({
-      oldStock: oldStockComponents,
+      oldStock: oldStockComponents || [],
       summary: {
-        count: oldStockComponents.length,
+        count: (oldStockComponents || []).length,
         totalValue: totalOldStockValue,
         threeMonthsAgo: threeMonthsAgo.toISOString()
       }

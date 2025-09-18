@@ -56,7 +56,7 @@ export default function AdminDashboardPage() {
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50 flex">
         {/* Side Panel */}
-        <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
+        <div className="w-64 bg-white border-r border-gray-200 flex flex-col transition-none">
           {/* Logo/Header */}
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center gap-2">
@@ -69,18 +69,12 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-2">
+          <nav className="flex-1 p-4 space-y-2 transition-none">
             <Button variant="default" className="w-full justify-start">
               <LayoutDashboard className="mr-3 h-4 w-4" />
               Dashboard
             </Button>
             
-            <Link href="/admin/overview">
-              <Button variant="ghost" className="w-full justify-start">
-                <BarChart3 className="mr-3 h-4 w-4" />
-                Overview
-              </Button>
-            </Link>
             
             <Link href="/admin/components">
               <Button variant="ghost" className="w-full justify-start">
@@ -98,7 +92,7 @@ export default function AdminDashboardPage() {
             
             <Link href="/admin/reports">
               <Button variant="ghost" className="w-full justify-start">
-                <TrendingUp className="mr-3 h-4 w-4" />
+                <BarChart3 className="mr-3 h-4 w-4" />
                 Reports
               </Button>
             </Link>
@@ -110,12 +104,6 @@ export default function AdminDashboardPage() {
               </Button>
             </Link>
             
-            <Link href="/admin/system">
-              <Button variant="ghost" className="w-full justify-start">
-                <Settings className="mr-3 h-4 w-4" />
-                System
-              </Button>
-            </Link>
           </nav>
 
           {/* User Profile */}
@@ -209,9 +197,9 @@ export default function AdminDashboardPage() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">${mockStats.totalValue.toLocaleString()}</div>
+                <div className="text-2xl font-bold">₹{(mockStats.totalValue * 83).toLocaleString()}</div>
                 <p className="text-xs text-muted-foreground">
-                  Inventory value
+                  Inventory value (INR)
                 </p>
               </CardContent>
             </Card>

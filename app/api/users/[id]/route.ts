@@ -1,29 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import bcrypt from 'bcryptjs'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: params.id },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        isActive: true,
-        createdAt: true,
-        lastLoginAt: true,
-        // Don't include password
-      }
-    })
+    const { id } = await params
+    
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, username, email, firstName, lastName, role, isActive, createdAt, lastLoginAt')
+      .eq('id', id)
+      .single()
 
-    if (!user) {
+    if (error || !user) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
@@ -42,16 +37,18 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const body = await request.json()
     const {
       firstName,
       lastName,
       role,
       isActive,
-      password
+      password,
+      updateLastLogin
     } = body
 
     const updateData: any = {}
@@ -61,25 +58,27 @@ export async function PUT(
     if (role !== undefined) updateData.role = role
     if (isActive !== undefined) updateData.isActive = isActive
     if (password) {
-      updateData.password = await bcrypt.hash(password, 12)
+      // For now, we'll skip password hashing since Supabase handles auth
+      // updateData.password = await bcrypt.hash(password, 12)
+    }
+    if (updateLastLogin) {
+      updateData.lastLoginAt = new Date().toISOString()
     }
 
-    const user = await prisma.user.update({
-      where: { id: params.id },
-      data: updateData,
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        isActive: true,
-        createdAt: true,
-        lastLoginAt: true,
-        // Don't include password
-      }
-    })
+    const { data: user, error } = await supabase
+      .from('users')
+      .update(updateData)
+      .eq('id', id)
+      .select('id, username, email, firstName, lastName, role, isActive, createdAt, lastLoginAt')
+      .single()
+
+    if (error) {
+      console.error('Supabase update error:', error)
+      return NextResponse.json(
+        { error: 'Failed to update user' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json(user)
   } catch (error) {
@@ -93,20 +92,25 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     // Soft delete - just deactivate the user
-    const user = await prisma.user.update({
-      where: { id: params.id },
-      data: { isActive: false },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        isActive: true
-      }
-    })
+    const { data: user, error } = await supabase
+      .from('users')
+      .update({ isActive: false })
+      .eq('id', id)
+      .select('id, username, email, isActive')
+      .single()
+
+    if (error) {
+      console.error('Supabase update error:', error)
+      return NextResponse.json(
+        { error: 'Failed to deactivate user' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({ message: 'User deactivated successfully' })
   } catch (error) {

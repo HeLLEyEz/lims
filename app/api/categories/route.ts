@@ -1,15 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 export async function GET() {
   try {
-    const categories = await prisma.category.findMany({
-      orderBy: {
-        name: 'asc'
-      }
-    })
+    const { data: categories, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('name', { ascending: true })
 
-    return NextResponse.json(categories)
+    if (error) {
+      console.error('Supabase error:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch categories' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(categories || [])
   } catch (error) {
     console.error('Error fetching categories:', error)
     return NextResponse.json(
@@ -32,9 +43,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if category already exists
-    const existingCategory = await prisma.category.findUnique({
-      where: { name }
-    })
+    const { data: existingCategory } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('name', name)
+      .single()
 
     if (existingCategory) {
       return NextResponse.json(
@@ -43,12 +56,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const category = await prisma.category.create({
-      data: {
+    const { data: category, error } = await supabase
+      .from('categories')
+      .insert({
         name,
-        description
-      }
-    })
+        description,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Supabase error:', error)
+      return NextResponse.json(
+        { error: 'Failed to create category' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json(category, { status: 201 })
   } catch (error) {

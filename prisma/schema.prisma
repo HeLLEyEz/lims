@@ -3,8 +3,118 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql" 
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String         @id @default(cuid())
+  username          String         @unique
+  email             String         @unique
+  password          String
+  firstName         String?
+  lastName          String?
+  role              UserRole       @default(USER)
+  isActive          Boolean        @default(true)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  lastLoginAt       DateTime?
+  createdComponents Component[]
+  notifications     Notification[]
+  transactions      Transaction[]
+
+  @@map("users")
+}
+
+model Category {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  description String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  components  Component[]
+
+  @@map("categories")
+}
+
+model Component {
+  id                   String        @id @default(cuid())
+  name                 String
+  manufacturer         String?
+  supplier             String?
+  partNumber           String        @unique
+  description          String?
+  quantity             Int           @default(0)
+  locationBin          String?
+  unitPrice            Decimal       @db.Decimal(10, 2)
+  datasheetLink        String?
+  criticalLowThreshold Int           @default(10)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  lastOutwardDate      DateTime?
+  categoryId           String
+  createdBy            String
+  category             Category      @relation(fields: [categoryId], references: [id])
+  creator              User          @relation(fields: [createdBy], references: [id])
+  transactions         Transaction[]
+
+  @@index([partNumber])
+  @@index([categoryId])
+  @@index([quantity])
+  @@index([lastOutwardDate])
+  @@map("components")
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  type        TransactionType
+  quantity    Int
+  reason      String?
+  project     String?
+  remarks     String?
+  createdAt   DateTime        @default(now())
+  componentId String
+  userId      String
+  component   Component       @relation(fields: [componentId], references: [id])
+  user        User            @relation(fields: [userId], references: [id])
+
+  @@index([componentId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([type])
+  @@map("transactions")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  readAt    DateTime?
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model MonthlyStats {
+  id            String   @id @default(cuid())
+  year          Int
+  month         Int
+  totalInward   Int      @default(0)
+  totalOutward  Int      @default(0)
+  uniqueInward  Int      @default(0)
+  uniqueOutward Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([year, month])
+  @@map("monthly_stats")
 }
 
 enum UserRole {
@@ -24,142 +134,4 @@ enum NotificationType {
   LOW_STOCK
   OLD_STOCK
   SYSTEM
-}
-
-model User {
-  id          String   @id @default(cuid())
-  username    String   @unique
-  email       String   @unique
-  password    String
-  firstName   String?
-  lastName    String?
-  role        UserRole @default(USER)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  lastLoginAt DateTime?
-
-  // Relations
-  createdComponents Component[]
-  transactions      Transaction[]
-  notifications     Notification[]
-
-  @@map("users")
-}
-
-model Category {
-  id          String @id @default(cuid())
-  name        String @unique
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  components Component[]
-
-  @@map("categories")
-}
-
-model Component {
-  id                   String   @id @default(cuid())
-  name                 String
-  manufacturer         String?
-  supplier             String?
-  partNumber           String   @unique
-  description          String?
-  quantity             Int      @default(0)
-  locationBin          String?
-  unitPrice            Decimal  @db.Decimal(10, 2)
-  datasheetLink        String?
-  criticalLowThreshold Int      @default(10)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  lastOutwardDate      DateTime?
-
-  // Foreign Keys
-  categoryId String
-  createdBy  String
-
-  // Relations
-  category     Category      @relation(fields: [categoryId], references: [id])
-  creator      User          @relation(fields: [createdBy], references: [id])
-  transactions Transaction[]
-
-  @@index([partNumber])
-  @@index([categoryId])
-  @@index([quantity])
-  @@index([lastOutwardDate])
-  @@map("components")
-}
-
-model Transaction {
-  id          String          @id @default(cuid())
-  type        TransactionType
-  quantity    Int
-  reason      String?
-  project     String?
-  remarks     String?
-  createdAt   DateTime        @default(now())
-
-  // Foreign Keys
-  componentId String
-  userId      String
-
-  // Relations
-  component Component @relation(fields: [componentId], references: [id])
-  user      User      @relation(fields: [userId], references: [id])
-
-  @@index([componentId])
-  @@index([userId])
-  @@index([createdAt])
-  @@index([type])
-  @@map("transactions")
-}
-
-model Notification {
-  id          String           @id @default(cuid())
-  type        NotificationType
-  title       String
-  message     String
-  isRead      Boolean          @default(false)
-  createdAt   DateTime         @default(now())
-  readAt      DateTime?
-
-  // Foreign Keys
-  userId String
-
-  // Relations
-  user User @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-  @@index([isRead])
-  @@index([createdAt])
-  @@map("notifications")
-}
-
-model SystemSettings {
-  id                      String @id @default(cuid())
-  key                     String @unique
-  value                   String
-  description             String?
-  updatedAt               DateTime @updatedAt
-
-  @@map("system_settings")
-}
-
-// View for dashboard analytics (optional - can be implemented as queries)
-// This is a conceptual model for tracking monthly statistics
-model MonthlyStats {
-  id              String   @id @default(cuid())
-  year            Int
-  month           Int
-  totalInward     Int      @default(0)
-  totalOutward    Int      @default(0)
-  uniqueInward    Int      @default(0)
-  uniqueOutward   Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@unique([year, month])
-  @@map("monthly_stats")
 }
